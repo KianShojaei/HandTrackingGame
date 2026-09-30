@@ -1,30 +1,9 @@
-"""
-Hand-Controlled Drawing Ball Game
----------------------------------
-بازی توپ کنترل‌شده با دست: با انگشت اشاره‌ات خط می‌کشی، توپ به خط‌ها برخورد
-می‌کند، بونوس/پاورآپ جمع می‌کنی و باید از بمب دوری کنی.
+"""Hand-controlled drawing ball game.
 
-این نسخه بازنویسیِ شیءگرای فایل اصلی BallGame(BC).py است:
-- باگ برخورد مکرر با بمبِ نامرئی رفع شده
-- بارگذاری تصاویر با پیام خطای واضح (به‌جای کرش خام)
-- منابع (وبکم) همیشه با try/finally آزاد می‌شوند
-- سازگاری پویا با هر رزولوشن وبکم
-- صفحهٔ شروع و پایان بازی (Game Over)
-- کلید ری‌استارت و پاک‌کردن بوم
-- سطح دشواری: با افزایش امتیاز، سرعت توپ زیاد می‌شود
-
-مسیر فایل‌های تصویر دقیقاً مثل نسخهٔ اصلی حفظ شده است:
-ball.png, bomb.png, powerup.png, life_powerup.png, bonus.png
-(باید در همان پوشه‌ای باشند که این اسکریپت را اجرا می‌کنی)
-
-کلیدها:
-  SPACE : شروع بازی / شروع دوباره بعد از باخت
-  D     : شروع نقاشی با انگشت اشاره
-  S     : توقف نقاشی
-  C     : پاک کردن بوم (خط‌های کشیده‌شده)
-  R     : تغییر رنگ نقاشی به قرمز
-  P     : تغییر رنگ نقاشی به بنفش (رنگ پیش‌فرض)
-  ESC   : خروج از بازی
+This is the structured 2026 revision of the original prototype. The core
+interaction remains the same: the index finger creates short-lived barriers
+that the ball reacts to. The code is organized into configuration, tracking,
+game objects, physics, and rendering so each part has a clear responsibility.
 """
 
 import os
@@ -177,7 +156,7 @@ class Ball(GameObject):
             new_velocity = new_velocity / v_norm * speed
         self.velocity = new_velocity.astype(np.float32)
 
-        # کمی فاصله بگیر تا توپ داخل خط گیر نکند
+        # Move the ball slightly away from the barrier to reduce repeated collisions.
         self.position = (self.position.astype(np.float64) + normal_vector * self.radius * 0.5).astype(np.int32)
 
 
@@ -305,7 +284,7 @@ class Game:
             print(f"[خطا] {e}")
             sys.exit(1)
 
-    # -------------------- راه‌اندازی / ری‌استارت --------------------
+    # ------------------------------------------------------------
     def _ensure_canvas(self, frame_shape):
         shape = (frame_shape[0], frame_shape[1], 3)
         if self.canvas_shape != shape:
@@ -342,7 +321,7 @@ class Game:
         self.ball.set_speed(speed)
         return speed
 
-    # -------------------- پردازش دست و نقاشی --------------------
+    # ------------------------------------------------------------
     def _handle_hand_tracking(self, rgb_image, bgr_image_for_drawing):
         results = self.hand_tracker.process(rgb_image)
         if not results.multi_hand_landmarks:
@@ -362,7 +341,7 @@ class Game:
         else:
             self.prev_finger_pos = None
 
-    # -------------------- فیزیک و برخوردها --------------------
+    # ------------------------------------------------------------
     def _update_ball_physics(self):
         self.ball.move_and_bounce(self.canvas_shape)
 
@@ -417,7 +396,7 @@ class Game:
             self.life_powerup_visible = False
             self.life_powerup_timer = now + Config.LIFE_POWERUP_INTERVAL
 
-    # -------------------- رسم صحنه --------------------
+    # ------------------------------------------------------------
     def _compose_frame(self, camera_bgr):
         self.drawing_canvas.erase_expired()
 
@@ -458,7 +437,7 @@ class Game:
                         cv2.FONT_HERSHEY_SIMPLEX, scale, color, 2, cv2.LINE_AA)
         return frame
 
-    # -------------------- حلقهٔ اصلی --------------------
+    # ------------------------------------------------------------
     def run(self):
         try:
             while self.cap.isOpened():
