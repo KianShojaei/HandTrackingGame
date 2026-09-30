@@ -18,21 +18,21 @@ from PIL import Image
 
 
 # ============================================================
-# تنظیمات کلی بازی
+# Game configuration
 # ============================================================
 class Config:
     WINDOW_NAME = "Hand Drawing Ball Game"
 
-    DEFAULT_DRAWING_COLOR = (255, 0, 255)  # بنفش (BGR)
+    DEFAULT_DRAWING_COLOR = (255, 0, 255)  # Purple (BGR)
     RED_DRAWING_COLOR = (0, 0, 255)
     LINE_THICKNESS = 5
-    LINE_LIFETIME = 0.2  # ثانیه؛ بعد از این مدت خط محو می‌شود
+    LINE_LIFETIME = 0.2  # Seconds before a stroke expires
 
     BALL_RADIUS = 20
     BALL_BASE_SPEED = 5.0
     BALL_MAX_SPEED = 14.0
-    BALL_SPEED_INCREMENT = 0.5   # افزایش سرعت به‌ازای هر سطح
-    SCORE_PER_LEVEL = 10         # هر چند امتیاز یک سطح سخت‌تر می‌شود
+    BALL_SPEED_INCREMENT = 0.5   # Additional ball speed per difficulty level
+    SCORE_PER_LEVEL = 10         # Score required to increase the difficulty level
 
     BONUS_RADIUS = 10
     BONUS_SCORE = 1
@@ -41,13 +41,13 @@ class Config:
     POWERUP_SCORE = 5
 
     LIFE_POWERUP_RADIUS = 15
-    LIFE_POWERUP_INTERVAL = 10   # هر چند ثانیه ظاهر می‌شود
-    LIFE_POWERUP_DURATION = 5    # چند ثانیه روی صفحه می‌ماند
-    LIFE_POWERUP_BONUS = 10      # جون اضافه‌شده
+    LIFE_POWERUP_INTERVAL = 10   # Interval between life power-up appearances
+    LIFE_POWERUP_DURATION = 5    # How long the life power-up remains visible
+    LIFE_POWERUP_BONUS = 10      # Lives added when collected
 
     BOMB_RADIUS = 15
-    BOMB_HIDDEN_DURATION = 5     # بعد از برخورد چند ثانیه مخفی می‌ماند
-    BOMB_RESPAWN_RANGE = 100     # حداکثر فاصلهٔ جابه‌جایی بمب نسبت به بونوس
+    BOMB_HIDDEN_DURATION = 5     # Hidden duration after a bomb collision
+    BOMB_RESPAWN_RANGE = 100     # Maximum bomb respawn distance from the bonus
 
     STARTING_LIVES = 5
 
@@ -70,19 +70,19 @@ class GameState:
 
 
 # ============================================================
-# ابزار بارگذاری تصویر با پیام خطای واضح
+# Image loading with clear error messages
 # ============================================================
 def load_rgba_image(path, size):
     if not os.path.exists(path):
         raise FileNotFoundError(
-            f"فایل تصویر پیدا نشد: '{path}'.\n"
-            f"لطفاً مطمئن شو این فایل در همان پوشه‌ای قرار دارد که اسکریپت را اجرا می‌کنی."
+            f"Image file not found: '{path}'.\n"
+            f"Make sure the file is located in the same directory as this script."
         )
     return Image.open(path).resize(size).convert("RGBA")
 
 
 # ============================================================
-# کلاس پایهٔ اشیای بازی (بونوس، پاورآپ، بمب و ...)
+# Shared game-object model for collectibles and hazards
 # ============================================================
 class GameObject:
     def __init__(self, image, radius):
@@ -115,7 +115,7 @@ class GameObject:
 
 
 # ============================================================
-# توپ
+# Ball physics
 # ============================================================
 class Ball(GameObject):
     def __init__(self, image, radius):
@@ -161,7 +161,7 @@ class Ball(GameObject):
 
 
 # ============================================================
-# بوم نقاشی: نگهداری خط‌ها، محو تدریجی، برخورد
+# Drawing canvas: stroke storage, expiry, and collision detection
 # ============================================================
 class DrawingCanvas:
     def __init__(self, shape):
@@ -205,7 +205,7 @@ class DrawingCanvas:
 
 
 # ============================================================
-# ردیابی دست با MediaPipe
+# Hand tracking with MediaPipe
 # ============================================================
 class HandTracker:
     def __init__(self):
@@ -233,18 +233,18 @@ class HandTracker:
 
 
 # ============================================================
-# کلاس اصلی بازی
+# Main game controller
 # ============================================================
 class Game:
     def __init__(self):
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
-            raise RuntimeError("وبکم پیدا نشد یا در دسترس نیست.")
+            raise RuntimeError("Webcam was not found or is unavailable.")
 
         self.hand_tracker = HandTracker()
         self.images = self._load_images()
 
-        self.canvas_shape = None  # بعد از اولین فریم مقداردهی می‌شود
+        self.canvas_shape = None  # Initialized after the first frame
         self.drawing_canvas = None
 
         self.ball = Ball(self.images["ball"], Config.BALL_RADIUS)
@@ -281,7 +281,7 @@ class Game:
                 "bonus": load_rgba_image(Config.IMAGE_PATHS["bonus"], (2 * Config.BONUS_RADIUS,) * 2),
             }
         except FileNotFoundError as e:
-            print(f"[خطا] {e}")
+            print(f"[ERROR] {e}")
             sys.exit(1)
 
     # ------------------------------------------------------------
@@ -366,8 +366,8 @@ class Game:
             self.lives += Config.LIFE_POWERUP_BONUS
             self.life_powerup_visible = False
 
-        # باگ نسخهٔ قبلی: برخورد با بمب حتی وقتی بمب مخفی بود چک می‌شد.
-        # این‌جا فقط وقتی بمب واقعاً روی صفحه است برخورد بررسی می‌شود.
+        # Previous version checked bomb collisions even while the bomb was hidden.
+        # Collision is checked only while the bomb is actually visible.
         if self.bomb_visible and self.ball.collides_with(self.bomb):
             self.lives -= 1
             self.bomb_visible = False
@@ -443,7 +443,7 @@ class Game:
             while self.cap.isOpened():
                 success, frame = self.cap.read()
                 if not success:
-                    print("[هشدار] دریافت فریم از وبکم شکست خورد.")
+                    print("[WARNING] Failed to read a frame from the webcam.")
                     break
 
                 frame = cv2.flip(frame, 1)
@@ -512,7 +512,7 @@ def main():
     try:
         game = Game()
     except RuntimeError as e:
-        print(f"[خطا] {e}")
+        print(f"[ERROR] {e}")
         sys.exit(1)
     game.run()
 
