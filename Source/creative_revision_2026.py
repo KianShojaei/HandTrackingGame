@@ -200,7 +200,8 @@ class Ball(GameObject):
             new_velocity = new_velocity / v_norm * speed
         self.velocity = new_velocity.astype(np.float32)
 
-        self.position = (self.position.astype(np.float64) + normal_vector * self.radius * 0.5).astype(np.int32)
+        separation = normal_vector * self.radius * 0.5
+        self.position = (self.position.astype(np.float64) + separation).astype(np.int32)
 
 
 # ============================================================
@@ -452,7 +453,8 @@ class Game:
 
     def _apply_difficulty(self):
         level = self.score // Config.SCORE_PER_LEVEL + 1
-        speed = min(Config.BALL_BASE_SPEED + (level - 1) * Config.BALL_SPEED_INCREMENT, Config.BALL_MAX_SPEED)
+        speed = Config.BALL_BASE_SPEED + (level - 1) * Config.BALL_SPEED_INCREMENT
+        speed = min(speed, Config.BALL_MAX_SPEED)
         for ball in self.balls:
             ball.set_speed(speed)
 
@@ -559,7 +561,9 @@ class Game:
                 speed = self._apply_difficulty() * Config.HAND_PADDLE_SPEED_BOOST
                 ball.reflect_off_line(edge[0], edge[1], speed)
                 ball.last_paddle_bounce_time = now
-                self.particles.spawn_burst(ball.position, Config.HAND_HULL_COLOR, Config.PARTICLE_COUNT_PADDLE)
+                self.particles.spawn_burst(
+                    ball.position, Config.HAND_HULL_COLOR, Config.PARTICLE_COUNT_PADDLE
+                )
 
     def _update_collectibles(self):
         for ball in self.balls:
@@ -571,24 +575,32 @@ class Game:
 
             if ball.collides_with(self.powerup):
                 self._register_collect(Config.POWERUP_SCORE)
-                self.particles.spawn_burst(self.powerup.position, (255, 0, 255), Config.PARTICLE_COUNT_COLLECT)
+                self.particles.spawn_burst(
+                    self.powerup.position, (255, 0, 255), Config.PARTICLE_COUNT_COLLECT
+                )
                 self.powerup.randomize_position(self.canvas_shape)
                 self._apply_difficulty()
 
             if self.life_powerup_visible and ball.collides_with(self.life_powerup):
                 self.lives += Config.LIFE_POWERUP_BONUS
                 self.life_powerup_visible = False
-                self.particles.spawn_burst(self.life_powerup.position, (0, 255, 0), Config.PARTICLE_COUNT_COLLECT)
+                self.particles.spawn_burst(
+                    self.life_powerup.position, (0, 255, 0), Config.PARTICLE_COUNT_COLLECT
+                )
 
             if self.bomb_visible and ball.collides_with(self.bomb):
                 self.bomb_visible = False
                 self.bomb_hit_time = time.time()
                 if self.shield_active:
-                    self.particles.spawn_burst(self.bomb.position, Config.SHIELD_COLOR, Config.PARTICLE_COUNT_COLLECT)
+                    self.particles.spawn_burst(
+                        self.bomb.position, Config.SHIELD_COLOR, Config.PARTICLE_COUNT_COLLECT
+                    )
                 else:
                     self.lives -= 1
                     self.bomb_flash_until = time.time() + Config.BOMB_FLASH_DURATION
-                    self.particles.spawn_burst(self.bomb.position, Config.BOMB_FLASH_COLOR, Config.PARTICLE_COUNT_COLLECT)
+                    self.particles.spawn_burst(
+                        self.bomb.position, Config.BOMB_FLASH_COLOR, Config.PARTICLE_COUNT_COLLECT
+                    )
                     if self.lives <= 0:
                         self.state = GameState.GAME_OVER
 
