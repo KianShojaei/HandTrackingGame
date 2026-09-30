@@ -1,8 +1,26 @@
 # HandTrackingGame
 
-A real-time hand-controlled drawing and physics game built with Python, OpenCV, and MediaPipe.
+A real-time computer-vision interaction experiment in which hand tracking is used to draw temporary barriers and control a physics-based game.
 
-The project started as a small experimental prototype and was later revisited to improve its structure, interaction model, and gameplay. The repository keeps the different stages of the project together so the evolution of the implementation can be followed directly from the source code.
+Built with Python, OpenCV, MediaPipe, NumPy, and Pillow, the project combines hand tracking, 2D geometry, collision detection, lightweight physics, game-state management, and interactive visual feedback.
+
+The project began as a small prototype in 2024 and was revisited in 2026 through two successive revisions. The repository keeps all three stages together so the technical evolution can be inspected directly in the source code.
+
+## At a Glance
+
+- **Domain:** Computer Vision / HCI / Real-Time Interaction
+- **Input:** Webcam-based hand tracking
+- **Core interaction:** Index-finger drawing and ball reflection
+- **Extended interaction:** Hand-as-paddle and fist-based shield
+- **Implementation:** Python with OpenCV, MediaPipe, NumPy, and Pillow
+- **Evolution:** Original prototype → structured revision → creative revision
+
+## Project Demo
+
+A demonstration of the hand-controlled interaction is available in the project's LinkedIn post:
+
+[View the demonstration](https://www.linkedin.com/posts/kianshojaei_mediapipe-opencv-activity-7245463781684723713-Vow7?utm_source=share&utm_medium=member_desktop&rcm=ACoAADXrbU8B6qFFmEzVSm8aFXdvGZGWAb4c0nE)
+
 
 ## Project Evolution
 
