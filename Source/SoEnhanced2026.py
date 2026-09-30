@@ -17,12 +17,12 @@ from PIL import Image
 
 
 # ============================================================
-# تنظیمات کلی بازی
+# Game configuration
 # ============================================================
 class Config:
     WINDOW_NAME = "Hand Drawing Ball Game - Creative Edition"
 
-    DEFAULT_DRAWING_COLOR = (255, 0, 255)  # بنفش (BGR)
+    DEFAULT_DRAWING_COLOR = (255, 0, 255)  # Purple (BGR)
     RED_DRAWING_COLOR = (0, 0, 255)
     LINE_THICKNESS = 5
     LINE_LIFETIME = 0.2
@@ -61,8 +61,8 @@ class Config:
         "bonus": "bonus.png",
     }
 
-    # --- مکانیزم‌های خلاقانهٔ جدید ---
-    HAND_HULL_COLOR = (255, 255, 0)      # آبی‌فیروزه‌ای (BGR)
+    # --- Creative gameplay extensions ---
+    HAND_HULL_COLOR = (255, 255, 0)      # Cyan (BGR)
     HAND_HULL_THICKNESS = 2
     HAND_PADDLE_MARGIN = 4
     HAND_PADDLE_COOLDOWN = 0.15
@@ -82,7 +82,7 @@ class Config:
 
     PARTICLE_COUNT_COLLECT = 12
     PARTICLE_COUNT_PADDLE = 10
-    PARTICLE_LIFE = 12  # فریم
+    PARTICLE_LIFE = 12  # Frames
 
     BOMB_FLASH_DURATION = 0.15
     BOMB_FLASH_COLOR = (0, 0, 255)
@@ -95,10 +95,10 @@ class GameState:
 
 
 # ============================================================
-# توابع کمکی هندسی
+# Geometry helpers
 # ============================================================
 def point_segment_distance(p, a, b):
-    """فاصلهٔ نقطهٔ p تا پاره‌خط ab (نه خط بی‌نهایت)."""
+    """Shortest distance from point p to finite segment ab (not the infinite line)."""
     p = np.array(p, dtype=np.float64)
     a = np.array(a, dtype=np.float64)
     b = np.array(b, dtype=np.float64)
@@ -114,14 +114,14 @@ def point_segment_distance(p, a, b):
 def load_rgba_image(path, size):
     if not os.path.exists(path):
         raise FileNotFoundError(
-            f"فایل تصویر پیدا نشد: '{path}'.\n"
-            f"لطفاً مطمئن شو این فایل در همان پوشه‌ای قرار دارد که اسکریپت را اجرا می‌کنی."
+            f"Image file not found: '{path}'.\n"
+            f"Make sure the file is located in the same directory as this script."
         )
     return Image.open(path).resize(size).convert("RGBA")
 
 
 # ============================================================
-# اشیای بازی (بونوس، پاورآپ، بمب و ...)
+# Game objects
 # ============================================================
 class GameObject:
     def __init__(self, image, radius):
@@ -204,7 +204,7 @@ class Ball(GameObject):
 
 
 # ============================================================
-# سیستم ذرات (برای جلوه‌های بصری)
+# Particle system for visual effects
 # ============================================================
 class Particle:
     def __init__(self, position, velocity, color, life):
@@ -254,7 +254,7 @@ class ParticleSystem:
 
 
 # ============================================================
-# بوم نقاشی
+# Drawing canvas
 # ============================================================
 class DrawingCanvas:
     def __init__(self, shape):
@@ -295,7 +295,7 @@ class DrawingCanvas:
 
 
 # ============================================================
-# ردیابی دست با MediaPipe + تشخیص حرکت (gesture)
+# MediaPipe hand tracking and gesture detection
 # ============================================================
 class HandTracker:
     FINGER_TIPS = [8, 12, 16, 20]
@@ -348,7 +348,7 @@ class Game:
     def __init__(self):
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
-            raise RuntimeError("وبکم پیدا نشد یا در دسترس نیست.")
+            raise RuntimeError("Webcam was not found or is unavailable.")
 
         self.hand_tracker = HandTracker()
         self.images = self._load_images()
@@ -400,7 +400,7 @@ class Game:
                 "bonus": load_rgba_image(Config.IMAGE_PATHS["bonus"], (2 * Config.BONUS_RADIUS,) * 2),
             }
         except FileNotFoundError as e:
-            print(f"[خطا] {e}")
+            print(f"[ERROR] {e}")
             sys.exit(1)
 
     @property
@@ -730,7 +730,7 @@ class Game:
             while self.cap.isOpened():
                 success, frame = self.cap.read()
                 if not success:
-                    print("[هشدار] دریافت فریم از وبکم شکست خورد.")
+                    print("[WARNING] Failed to read a frame from the webcam.")
                     break
 
                 frame = cv2.flip(frame, 1)
@@ -801,7 +801,7 @@ def main():
     try:
         game = Game()
     except RuntimeError as e:
-        print(f"[خطا] {e}")
+        print(f"[ERROR] {e}")
         sys.exit(1)
     game.run()
 
