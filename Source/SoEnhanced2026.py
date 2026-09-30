@@ -1,32 +1,8 @@
-"""
-Hand-Controlled Drawing Ball Game -- Creative Edition
-------------------------------------------------------
-نسخهٔ خلاقانهٔ بازی: علاوه بر کشیدن خط با انگشت، حالا کل دستت یک پدال زندهٔ
-فیزیکی است که توپ از رویش برخورد می‌کند، مشت‌کردن دست یک سپر موقت فعال
-می‌کند، و جمع‌کردن سریع آیتم‌ها امتیاز کمبو می‌دهد.
+"""Hand-controlled drawing ball game -- creative edition.
 
-مسیر فایل‌های تصویر دقیقاً مثل نسخهٔ اصلی حفظ شده است:
-ball.png, bomb.png, powerup.png, life_powerup.png, bonus.png
-
-مکانیزم‌های جدید نسبت به نسخهٔ قبلی:
-  - دست به‌عنوان پدال: کل دست (نه فقط یک خط) توپ را پس می‌زند
-  - مشت‌کردن دست = فعال‌سازی سپر موقت (بمب آسیب نمی‌زند)
-  - کمبو امتیاز: جمع‌کردن سریع و پیاپیِ آیتم‌ها ضریب امتیاز را بالا می‌برد
-  - توپ دوم در سطوح بالاتر برای چالش بیشتر
-  - جلوه‌های بصری: ذرات، دنبالهٔ توپ، فلاش برخورد با بمب، حلقهٔ سپر
-
-کلیدها:
-  SPACE : شروع بازی / شروع دوباره بعد از باخت
-  D     : شروع نقاشی با انگشت اشاره
-  S     : توقف نقاشی
-  C     : پاک کردن بوم (خط‌های کشیده‌شده)
-  R     : تغییر رنگ نقاشی به قرمز
-  P     : تغییر رنگ نقاشی به بنفش (رنگ پیش‌فرض)
-  ESC   : خروج از بازی
-
-حرکت دست:
-  مشت کن  -> فعال‌سازی سپر موقت (چند ثانیه بعد از کول‌داون دوباره در دسترس است)
-  کل دستت -> پدال زنده است؛ توپ از رویش پس می‌خورد
+This version builds on the structured 2026 game with direct hand-paddle
+interaction, gesture-based shielding, combo scoring, multiple balls, trails,
+particles, and lightweight visual feedback.
 """
 
 import os
@@ -431,7 +407,7 @@ class Game:
     def shield_active(self):
         return time.time() < self.shield_active_until
 
-    # -------------------- راه‌اندازی / ری‌استارت --------------------
+    # ------------------------------------------------------------
     def _ensure_canvas(self, frame_shape):
         shape = (frame_shape[0], frame_shape[1], 3)
         if self.canvas_shape != shape:
@@ -489,7 +465,7 @@ class Game:
 
         return speed
 
-    # -------------------- ثبت امتیاز و کمبو --------------------
+    # ------------------------------------------------------------
     def _register_collect(self, base_score):
         now = time.time()
         if now - self.last_collect_time <= Config.COMBO_WINDOW:
@@ -501,7 +477,7 @@ class Game:
         self.score += gained
         return gained
 
-    # -------------------- پردازش دست، نقاشی و حرکت --------------------
+    # ------------------------------------------------------------
     def _handle_gesture(self, landmarks_px):
         fist_now = HandTracker.is_fist(landmarks_px)
         now = time.time()
@@ -536,7 +512,7 @@ class Game:
         else:
             self.prev_finger_pos = None
 
-    # -------------------- فیزیک و برخوردها --------------------
+    # ------------------------------------------------------------
     def _find_hand_paddle_edge(self, ball):
         hull = self.current_hand_hull
         if hull is None or len(hull) < 3:
@@ -640,7 +616,7 @@ class Game:
         if self.combo_multiplier > 1 and now - self.last_collect_time > Config.COMBO_WINDOW:
             self.combo_multiplier = 1
 
-    # -------------------- رسم صحنه --------------------
+    # ------------------------------------------------------------
     def _draw_ball_trails(self, frame):
         for ball in self.balls:
             trail_list = list(ball.trail)
@@ -748,7 +724,7 @@ class Game:
                         cv2.FONT_HERSHEY_SIMPLEX, scale, color, 2, cv2.LINE_AA)
         return frame
 
-    # -------------------- حلقهٔ اصلی --------------------
+    # ------------------------------------------------------------
     def run(self):
         try:
             while self.cap.isOpened():
