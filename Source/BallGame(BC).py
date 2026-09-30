@@ -2,7 +2,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from collections import deque
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image
 import time
 
 # Initialize MediaPipe Hands
@@ -26,7 +26,6 @@ drawing_color = (255, 0, 255)  # purple color
 
 # Ball properties
 ball_radius = 20
-ball_color = (0, 0, 255)  # Red color
 ball_position = np.array([100, 100], dtype=np.int32)
 ball_velocity = np.array([5, 5], dtype=np.float32)
 
@@ -69,12 +68,32 @@ bonus_image = Image.open('bonus.png').resize((2 * bonus_radius, 2 * bonus_radius
 
 
 def calculate_reflection(ball_velocity, line_start, line_end):
-    line_vector = np.array(line_end) - np.array(line_start)
-    line_vector = line_vector / np.linalg.norm(line_vector)
+    """Reflect a velocity vector across the normal of a drawn segment."""
+    line_vector = np.asarray(line_end, dtype=np.float64) - np.asarray(line_start, dtype=np.float64)
+    length = np.linalg.norm(line_vector)
+    if length == 0:
+        return ball_velocity
+
+    line_vector /= length
     normal_vector = np.array([-line_vector[1], line_vector[0]])
     velocity_projection = np.dot(ball_velocity, normal_vector)
-    reflection_vector = ball_velocity - 2 * velocity_projection * normal_vector
-    return reflection_vector
+    return ball_velocity - 2 * velocity_projection * normal_vector
+
+
+def point_segment_distance(point, start, end):
+    """Return the shortest distance from a point to a finite line segment."""
+    point = np.asarray(point, dtype=np.float64)
+    start = np.asarray(start, dtype=np.float64)
+    end = np.asarray(end, dtype=np.float64)
+
+    segment = end - start
+    length_sq = np.dot(segment, segment)
+    if length_sq == 0:
+        return float(np.linalg.norm(point - start))
+
+    t = np.clip(np.dot(point - start, segment) / length_sq, 0.0, 1.0)
+    closest = start + t * segment
+    return float(np.linalg.norm(point - closest))
 
 
 def keep_within_bounds(position, radius, canvas_shape):
@@ -95,12 +114,10 @@ while cap.isOpened():
     # Flip the image horizontally to create a mirror effect
     image = cv2.flip(image, 1)
 
-    # Convert the BGR image to RGB
+    # MediaPipe expects RGB frames. Keep the annotated RGB frame alive until
+    # it is converted back to BGR for display.
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    pil_image = Image.fromarray(image)
     results = hands.process(image)
-    # Convert the image to RGBA mode
-    pil_image = pil_image.convert("RGBA")
 
     # Draw hand landmarks and track index finger
     if results.multi_hand_landmarks:
@@ -118,8 +135,7 @@ while cap.isOpened():
             else:
                 prev_x, prev_y = None, None
 
-    # Convert the RGB image back to BGR (we use np.array to remove the hand recognizers)
-    image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
     # Update ball position
     ball_position += ball_velocity.astype(np.int32)
@@ -136,13 +152,12 @@ while cap.isOpened():
     collision = cv2.bitwise_and(canvas, mask)
     if np.any(collision):
         for start_point, end_point, _ in points_queue:
-            line_length = cv2.norm(np.array(end_point) - np.array(start_point))
-            if line_length > 0:
-                distance = cv2.norm(np.cross(np.array(end_point) - np.array(start_point),
-                                             np.array(start_point) - ball_position)) / line_length
-                if distance <= ball_radius:
-                    ball_velocity = calculate_reflection(ball_velocity, start_point, end_point)
-                    ball_velocity = ball_velocity / np.linalg.norm(ball_velocity) * 7  # Maintain constant speed
+            distance = point_segment_distance(ball_position, start_point, end_point)
+            if distance <= ball_radius:
+                ball_velocity = calculate_reflection(ball_velocity, start_point, end_point)
+                speed = np.linalg.norm(ball_velocity)
+                if speed > 0:
+                    ball_velocity = ball_velocity / speed * 7  # Preserve the prototype's bounce speed
                     # Move the ball slightly away from the line to avoid getting stuck
                     line_vector = np.array(end_point) - np.array(start_point)
                     line_vector = line_vector / np.linalg.norm(line_vector)
@@ -170,8 +185,8 @@ while cap.isOpened():
         #life_powerup_position = np.random.randint(0, [canvas.shape[1], canvas.shape[0]])
         #life_powerup_position = keep_within_bounds(life_powerup_position, life_powerup_radius, canvas.shape)
 
-    # Check for collision with bomb
-    if np.linalg.norm(ball_position - bomb_position) < ball_radius + bomb_radius:
+    # Only an active (visible) bomb should affect the player.
+    if (bomb_hit_time is None or time.time() - bomb_hit_time >= 5) and             np.linalg.norm(ball_position - bomb_position) < ball_radius + bomb_radius:
         lives -= 1
         bomb_hit_time = time.time()
         # bomb_position = np.random.randint(0, [canvas.shape[1], canvas.shape[0]])
@@ -180,11 +195,8 @@ while cap.isOpened():
             print("Game Over!")
             break
 
-    # Create a separate layer for the ball
-    ball_layer = np.zeros_like(canvas)
-    cv2.circle(ball_layer, tuple(ball_position), ball_radius, ball_color, -1)
-
-    # Create a separate layer for the ball, bonus, power-up, and bomb
+    # Compose the sprites on a transparent layer so they can be placed over
+    # the camera frame without modifying the drawing canvas.
     ball_layer = Image.new("RGBA", (canvas.shape[1], canvas.shape[0]), (0, 0, 0, 0))
     ball_layer.paste(ball_image, (ball_position[0] - ball_radius, ball_position[1] - ball_radius), ball_image)
     ball_layer.paste(bonus_image, (bonus_position[0] - bonus_radius, bonus_position[1] - bonus_radius), bonus_image)
