@@ -6,20 +6,17 @@ from PIL import Image, ImageDraw, ImageOps
 import time
 
 # Initialize MediaPipe Hands.
-# The prototype uses the default MediaPipe Hands configuration and keeps the
-# tracking pipeline intentionally small: the index fingertip is the main input.
+# The prototype uses the default configuration and the index fingertip as its main input.
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands()
 mp_drawing = mp.solutions.drawing_utils
 
-# Open the default webcam. The prototype assumes camera index 0, which keeps
-# setup simple but also makes the original version dependent on local camera settings.
+# Open the default webcam used by the original prototype.
 cap = cv2.VideoCapture(0)
 drawing = False
 prev_x, prev_y = None, None
 
-# The drawing canvas is created after the first frame so its dimensions match
-# the actual webcam resolution.
+# Create the drawing canvas after the first frame so its dimensions match the camera.
 canvas = None
 
 # Create a named window and set it to be resizable
@@ -34,8 +31,7 @@ ball_color = (0, 0, 255)  # Red color
 ball_position = np.array([100, 100], dtype=np.int32)
 ball_velocity = np.array([5, 5], dtype=np.float32)
 
-# Each segment keeps its creation time so the game can remove old strokes
-# without having to rebuild the entire drawing history every frame.
+# Store each temporary stroke segment together with its creation time.
 points_queue = deque()
 
 # Bonus properties
@@ -74,8 +70,6 @@ bonus_image = Image.open('bonus.png').resize((2 * bonus_radius, 2 * bonus_radius
 
 
 def calculate_reflection(ball_velocity, line_start, line_end):
-    # Reflect the velocity vector around the normal of the drawn line.
-    # This gives the drawn stroke the role of a temporary physical barrier.
     line_vector = np.array(line_end) - np.array(line_start)
     line_vector = line_vector / np.linalg.norm(line_vector)
     normal_vector = np.array([-line_vector[1], line_vector[0]])
@@ -85,7 +79,6 @@ def calculate_reflection(ball_velocity, line_start, line_end):
 
 
 def keep_within_bounds(position, radius, canvas_shape):
-    # Clamp an object's center so its full circular hit area stays on-screen.
     position[0] = np.clip(position[0], radius, canvas_shape[1] - radius)
     position[1] = np.clip(position[1], radius, canvas_shape[0] - radius)
     return position
@@ -129,8 +122,7 @@ while cap.isOpened():
     # Convert the RGB image back to BGR (we use np.array to remove the hand recognizers)
     image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
 
-    # Advance the ball using its current velocity. Collision handling below
-    # may change this velocity before the next frame is rendered.
+    # Advance the ball using its current velocity.
     # Update ball position
     ball_position += ball_velocity.astype(np.int32)
 
@@ -140,9 +132,7 @@ while cap.isOpened():
     if ball_position[1] - ball_radius < 0 or ball_position[1] + ball_radius > canvas.shape[0]:
         ball_velocity[1] = -ball_velocity[1]
 
-    # First use a rasterized mask as a quick indication that the ball overlaps
-    # the visible drawing. Detailed segment-level geometry is checked only
-    # after this inexpensive test.
+    # Detect overlap with the temporary drawing, then test its stored segments.
     # Check for collision with drawn lines
     mask = np.zeros_like(canvas, dtype=np.uint8)
     cv2.circle(mask, tuple(ball_position), ball_radius, (255, 255, 255), -1)
@@ -163,7 +153,7 @@ while cap.isOpened():
                     ball_position += (normal_vector * (ball_radius - distance)).astype(np.int32)
                     break
 
-    # Collectible objects use simple circle-to-circle distance checks.
+    # Collectibles use circle-to-circle distance checks.
     # Check for collision with bonus
     if np.linalg.norm(ball_position - bonus_position) < ball_radius + bonus_radius:
         score += 1
@@ -194,12 +184,12 @@ while cap.isOpened():
             print("Game Over!")
             break
 
-    # Compose the game sprites separately from the camera and drawing canvas.
-    # This keeps the visual layers independent before final compositing.
+    # Compose sprites on a separate layer before final rendering.
     # Create a separate layer for the ball
     ball_layer = np.zeros_like(canvas)
     cv2.circle(ball_layer, tuple(ball_position), ball_radius, ball_color, -1)
 
+    # Compose sprites on a separate layer before final rendering.
     # Create a separate layer for the ball, bonus, power-up, and bomb
     ball_layer = Image.new("RGBA", (canvas.shape[1], canvas.shape[0]), (0, 0, 0, 0))
     ball_layer.paste(ball_image, (ball_position[0] - ball_radius, ball_position[1] - ball_radius), ball_image)
@@ -210,8 +200,7 @@ while cap.isOpened():
     if life_powerup_visible:
         ball_layer.paste(life_powerup_image, (life_powerup_position[0] - life_powerup_radius, life_powerup_position[1] - life_powerup_radius), life_powerup_image)
 
-    # Remove expired stroke segments from both the queue and the visible canvas.
-    # The short lifetime is part of the original interaction design.
+    # Remove stroke segments after their short lifetime.
     # Erase lines after a delay
     current_time = time.time()
     while points_queue and current_time - points_queue[0][2] > 0.2:
@@ -239,7 +228,7 @@ while cap.isOpened():
     if life_powerup_visible and current_time > life_powerup_timer - 10 + life_powerup_duration:
         life_powerup_visible = False
 
-    # Final composition: camera view + semi-transparent drawing layer + sprites.
+    # Combine the camera frame, drawing canvas, and game sprites.
     # Combine the original image, canvas, and ball layer
     combined_image = cv2.addWeighted(image, 0.5, canvas, 0.5, 0)
     combined_image = cv2.addWeighted(combined_image, 1, ball_layer, 1, 0)
