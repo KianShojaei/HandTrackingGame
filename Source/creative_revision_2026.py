@@ -82,7 +82,7 @@ class Config:
 
     PARTICLE_COUNT_COLLECT = 12
     PARTICLE_COUNT_PADDLE = 10
-    PARTICLE_LIFE = 12  # Frames
+    PARTICLE_LIFE_FRAMES = 12  # Frame-based lifetime for visual particles
 
     BOMB_FLASH_DURATION = 0.15
     BOMB_FLASH_COLOR = (0, 0, 255)
@@ -238,7 +238,7 @@ class ParticleSystem:
             angle = np.random.uniform(0, 2 * np.pi)
             speed = np.random.uniform(2, 6)
             velocity = (np.cos(angle) * speed, np.sin(angle) * speed)
-            self.particles.append(Particle(center, velocity, color, Config.PARTICLE_LIFE))
+            self.particles.append(Particle(center, velocity, color, Config.PARTICLE_LIFE_FRAMES))
 
     def update(self):
         for p in self.particles:
