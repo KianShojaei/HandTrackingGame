@@ -157,7 +157,8 @@ class Ball(GameObject):
         self.velocity = new_velocity.astype(np.float32)
 
         # Move the ball slightly away from the barrier to reduce repeated collisions.
-        self.position = (self.position.astype(np.float64) + normal_vector * self.radius * 0.5).astype(np.int32)
+        separation = normal_vector * self.radius * 0.5
+        self.position = (self.position.astype(np.float64) + separation).astype(np.int32)
 
 
 # ============================================================
